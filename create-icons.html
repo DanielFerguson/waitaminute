@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Generate WaitAMinute Icons</title>
+</head>
+<body>
+    <h2>WaitAMinute Icon Generator</h2>
+    <p>Right-click each canvas and save as PNG with the appropriate name in the assets folder:</p>
+    
+    <div>
+        <h3>icon-16.png</h3>
+        <canvas id="icon16" width="16" height="16"></canvas>
+    </div>
+    
+    <div>
+        <h3>icon-48.png</h3>
+        <canvas id="icon48" width="48" height="48"></canvas>
+    </div>
+    
+    <div>
+        <h3>icon-128.png</h3>
+        <canvas id="icon128" width="128" height="128"></canvas>
+    </div>
+    
+    <script>
+        function drawIcon(canvasId, size) {
+            const canvas = document.getElementById(canvasId);
+            const ctx = canvas.getContext('2d');
+            
+            // Clear canvas
+            ctx.clearRect(0, 0, size, size);
+            
+            // Background circle
+            ctx.fillStyle = '#4CAF50';
+            ctx.beginPath();
+            ctx.arc(size/2, size/2, size/2 - 1, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pause symbol (two vertical bars)
+            ctx.fillStyle = 'white';
+            const barWidth = size * 0.12;
+            const barHeight = size * 0.4;
+            const gap = size * 0.15;
+            
+            // Left bar
+            ctx.fillRect(
+                size/2 - gap - barWidth,
+                size/2 - barHeight/2,
+                barWidth,
+                barHeight
+            );
+            
+            // Right bar
+            ctx.fillRect(
+                size/2 + gap,
+                size/2 - barHeight/2,
+                barWidth,
+                barHeight
+            );
+            
+            // Small hourglass icon overlay (optional, for larger sizes)
+            if (size >= 48) {
+                ctx.strokeStyle = 'white';
+                ctx.lineWidth = size * 0.02;
+                
+                // Draw simple hourglass shape
+                const hSize = size * 0.25;
+                const hX = size * 0.72;
+                const hY = size * 0.72;
+                
+                ctx.beginPath();
+                // Top triangle
+                ctx.moveTo(hX - hSize/2, hY - hSize/2);
+                ctx.lineTo(hX + hSize/2, hY - hSize/2);
+                ctx.lineTo(hX, hY);
+                ctx.closePath();
+                // Bottom triangle
+                ctx.moveTo(hX - hSize/2, hY + hSize/2);
+                ctx.lineTo(hX + hSize/2, hY + hSize/2);
+                ctx.lineTo(hX, hY);
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
+        
+        // Generate all icons
+        drawIcon('icon16', 16);
+        drawIcon('icon48', 48);
+        drawIcon('icon128', 128);
+        
+        // Auto-download function
+        function downloadCanvas(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL();
+            link.click();
+        }
+        
+        // Add download buttons
+        document.querySelectorAll('canvas').forEach(canvas => {
+            const button = document.createElement('button');
+            button.textContent = 'Download';
+            button.onclick = () => downloadCanvas(canvas.id, canvas.id.replace('icon', 'icon-') + '.png');
+            canvas.parentElement.appendChild(document.createElement('br'));
+            canvas.parentElement.appendChild(button);
+        });
+    </script>
+    
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            display: block;
+            margin: 10px 0;
+            image-rendering: pixelated;
+            image-rendering: -moz-crisp-edges;
+            image-rendering: crisp-edges;
+        }
+        #icon48, #icon128 {
+            image-rendering: auto;
+        }
+        div {
+            margin-bottom: 30px;
+        }
+        button {
+            padding: 5px 15px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #45a049;
+        }
+    </style>
+</body>
+</html>

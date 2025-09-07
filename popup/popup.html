@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaitAMinute</title>
+    <link rel="stylesheet" href="popup.css">
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>WaitAMinute</h1>
+            <label class="toggle">
+                <input type="checkbox" id="enableToggle" checked>
+                <span class="slider"></span>
+            </label>
+        </header>
+
+        <div class="add-domain">
+            <input type="text" id="domainInput" placeholder="Enter domain (e.g., twitter.com)">
+            <button id="addButton">Add</button>
+        </div>
+
+        <div class="domain-list" id="domainList">
+            <!-- Domains will be added here dynamically -->
+        </div>
+
+        <div class="settings">
+            <h3>Settings</h3>
+            <div class="setting-item">
+                <label for="challengeType">Challenge Type:</label>
+                <select id="challengeType">
+                    <option value="countdown">Countdown Timer</option>
+                    <option value="math">Simple Math</option>
+                    <option value="turnstile">Cloudflare Turnstile</option>
+                </select>
+            </div>
+            <div class="setting-item" id="waitDurationSection">
+                <label for="waitDuration">Wait Duration (seconds):</label>
+                <input type="number" id="waitDuration" min="5" max="300" value="30">
+            </div>
+            <div class="setting-item" id="turnstileKeySection" style="display: none;">
+                <label for="turnstileKey">Turnstile Site Key:</label>
+                <input type="text" id="turnstileKey" placeholder="Enter your site key">
+            </div>
+            <div class="setting-item">
+                <label for="bypassDuration">Bypass Duration (minutes):</label>
+                <input type="number" id="bypassDuration" min="1" max="60" value="10">
+            </div>
+        </div>
+    </div>
+    <script src="popup.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,267 @@
+/* WaitAMinute Overlay Styles */
+
+.waitaminute-overlay {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    background: rgba(0, 0, 0, 0.95) !important;
+    backdrop-filter: blur(10px) !important;
+    z-index: 2147483647 !important; /* Maximum z-index */
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+    opacity: 1 !important;
+    transition: opacity 0.3s ease !important;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif !important;
+}
+
+.waitaminute-container {
+    background: white !important;
+    border-radius: 12px !important;
+    padding: 40px !important;
+    max-width: 400px !important;
+    width: 90% !important;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3) !important;
+    text-align: center !important;
+    animation: slideUp 0.3s ease !important;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(30px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.waitaminute-header h2 {
+    margin: 0 0 10px 0 !important;
+    font-size: 28px !important;
+    color: #333 !important;
+    font-weight: 600 !important;
+}
+
+.waitaminute-header p {
+    margin: 0 0 30px 0 !important;
+    color: #666 !important;
+    font-size: 16px !important;
+    line-height: 1.5 !important;
+}
+
+.waitaminute-challenge {
+    margin: 30px 0 !important;
+    min-height: 100px !important;
+    display: flex !important;
+    justify-content: center !important;
+    align-items: center !important;
+}
+
+/* Math Challenge Styles */
+.math-challenge {
+    width: 100% !important;
+}
+
+.math-question {
+    font-size: 24px !important;
+    color: #333 !important;
+    margin: 0 0 20px 0 !important;
+    font-weight: 500 !important;
+}
+
+#math-answer {
+    width: 100% !important;
+    padding: 12px 16px !important;
+    font-size: 18px !important;
+    border: 2px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    margin-bottom: 15px !important;
+    text-align: center !important;
+    transition: border-color 0.3s ease !important;
+    box-sizing: border-box !important;
+}
+
+#math-answer:focus {
+    outline: none !important;
+    border-color: #4CAF50 !important;
+}
+
+#math-submit {
+    width: 100% !important;
+    padding: 12px 24px !important;
+    font-size: 16px !important;
+    font-weight: 600 !important;
+    color: white !important;
+    background: #4CAF50 !important;
+    border: none !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: background 0.3s ease !important;
+}
+
+#math-submit:hover {
+    background: #45a049 !important;
+}
+
+#math-submit:active {
+    transform: scale(0.98) !important;
+}
+
+.math-error {
+    color: #f44336 !important;
+    font-size: 14px !important;
+    margin-top: 10px !important;
+    padding: 8px !important;
+    background: #ffebee !important;
+    border-radius: 4px !important;
+}
+
+/* Turnstile Widget Container */
+#turnstile-widget {
+    display: inline-block !important;
+    min-height: 65px !important;
+}
+
+/* Footer */
+.waitaminute-footer {
+    margin-top: 20px !important;
+}
+
+.waitaminute-footer p {
+    margin: 0 !important;
+    color: #999 !important;
+    font-size: 14px !important;
+    font-style: italic !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 480px) {
+    .waitaminute-container {
+        padding: 30px 20px !important;
+        width: 95% !important;
+    }
+    
+    .waitaminute-header h2 {
+        font-size: 24px !important;
+    }
+    
+    .waitaminute-header p {
+        font-size: 14px !important;
+    }
+    
+    .math-question {
+        font-size: 20px !important;
+    }
+    
+    #math-answer {
+        font-size: 16px !important;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .waitaminute-overlay {
+        background: rgba(0, 0, 0, 0.98) !important;
+    }
+}
+
+/* Countdown Challenge Styles */
+.countdown-challenge {
+    width: 100% !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 30px !important;
+}
+
+.countdown-circle {
+    position: relative !important;
+    width: 200px !important;
+    height: 200px !important;
+}
+
+.countdown-svg {
+    transform: rotate(-90deg) !important;
+}
+
+.countdown-bg {
+    fill: none !important;
+    stroke: #f0f0f0 !important;
+    stroke-width: 8 !important;
+}
+
+.countdown-progress {
+    fill: none !important;
+    stroke: #4CAF50 !important;
+    stroke-width: 8 !important;
+    stroke-linecap: round !important;
+    transition: stroke-dashoffset 1s linear !important;
+}
+
+.countdown-number {
+    position: absolute !important;
+    top: 50% !important;
+    left: 50% !important;
+    transform: translate(-50%, -50%) !important;
+    font-size: 48px !important;
+    font-weight: bold !important;
+    color: #333 !important;
+}
+
+.skip-button {
+    padding: 12px 24px !important;
+    font-size: 14px !important;
+    color: #666 !important;
+    background: transparent !important;
+    border: 2px solid #e0e0e0 !important;
+    border-radius: 8px !important;
+    cursor: pointer !important;
+    transition: all 0.3s ease !important;
+    max-width: 280px !important;
+    text-align: center !important;
+    line-height: 1.4 !important;
+}
+
+.skip-button:hover {
+    border-color: #4CAF50 !important;
+    color: #4CAF50 !important;
+    background: rgba(76, 175, 80, 0.05) !important;
+}
+
+/* Mobile adjustments for countdown */
+@media (max-width: 480px) {
+    .countdown-circle {
+        width: 150px !important;
+        height: 150px !important;
+    }
+    
+    .countdown-svg {
+        width: 150px !important;
+        height: 150px !important;
+    }
+    
+    .countdown-bg,
+    .countdown-progress {
+        r: 67.5 !important;
+        cx: 75 !important;
+        cy: 75 !important;
+    }
+    
+    .countdown-number {
+        font-size: 36px !important;
+    }
+    
+    .skip-button {
+        font-size: 13px !important;
+        padding: 10px 20px !important;
+    }
+}
+
+/* Ensure overlay stays on top of everything */
+.waitaminute-overlay * {
+    z-index: 2147483647 !important;
+}
