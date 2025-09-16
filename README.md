@@ -9,10 +9,12 @@ WaitAMinute helps you build better browsing habits by adding a moment of pause b
 ## ✨ Features
 
 - **Domain Blocking**: Add any website domain to your blocklist
+- **Time-Based Blocking**: Configure specific time slots when sites should be blocked
+- **Block Types**: Choose between soft blocks (with challenge) or hard blocks (no bypass)
 - **CAPTCHA Challenge**: Complete a verification challenge before accessing blocked sites
 - **Cloudflare Turnstile Integration**: Modern, privacy-friendly challenge system
 - **Fallback Options**: Simple math CAPTCHA when Turnstile is unavailable
-- **Easy Management**: Simple popup interface to manage blocked domains
+- **Easy Management**: Simple popup interface to manage blocked domains and time slots
 - **Temporary Bypass**: Successfully completing a challenge grants temporary access
 - **Privacy Focused**: All data stored locally, no external tracking
 
@@ -96,7 +98,7 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 - [ ] Chrome Web Store release
 - [ ] Custom challenge types (typing exercises, mindfulness prompts)
-- [ ] Time-based blocking (e.g., only during work hours)
+- [x] Time-based blocking (e.g., only during work hours)
 - [ ] Statistics tracking (how many times you've reconsidered)
 - [ ] Sync settings across devices
 - [ ] Firefox extension port

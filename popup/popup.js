@@ -3,6 +3,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadDomains();
     await loadSettings();
     setupEventListeners();
+    setupTabNavigation();
+    // Load statistics when the popup opens
+    await loadStatistics();
 });
 
 // Store for domains data
@@ -161,6 +164,13 @@ function setupEventListeners() {
     // Bypass duration change
     document.getElementById('bypassDuration').addEventListener('change', async (e) => {
         await updateSettings({ bypassDuration: parseInt(e.target.value) });
+    });
+
+    // Reset statistics button
+    document.getElementById('resetStatistics').addEventListener('click', async () => {
+        if (confirm('Are you sure you want to reset all statistics? This action cannot be undone.')) {
+            await resetStatistics();
+        }
     });
 
     // Modal controls
@@ -458,4 +468,188 @@ function toggleChallengeSettings(challengeType) {
 function isValidDomain(domain) {
     const domainRegex = /^([a-z0-9]+(-[a-z0-9]+)*\.)+[a-z]{2,}$/i;
     return domainRegex.test(domain);
+}
+
+// Setup tab navigation
+function setupTabNavigation() {
+    const tabButtons = document.querySelectorAll('.nav-tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.tab;
+
+            // Update button states
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+
+            // Update content visibility
+            tabContents.forEach(content => {
+                content.classList.remove('active');
+                if (content.id === `${targetTab}-tab`) {
+                    content.classList.add('active');
+                }
+            });
+
+            // Load statistics when statistics tab is opened
+            if (targetTab === 'statistics') {
+                loadStatistics();
+            }
+        });
+    });
+}
+
+// Load and display statistics
+async function loadStatistics() {
+    try {
+        const stats = await chrome.runtime.sendMessage({ action: 'getStatistics' });
+        console.log('WaitAMinute: Received statistics:', stats);
+        displayStatistics(stats);
+    } catch (error) {
+        console.error('Failed to load statistics:', error);
+        displayEmptyStatistics();
+    }
+}
+
+// Display statistics in the UI
+function displayStatistics(stats) {
+    const today = new Date().toISOString().split('T')[0];
+    const todayStats = stats.dailyStats?.[today] || { blockedAttempts: 0, challengesCompleted: 0, domains: {} };
+
+    // Update summary cards
+    document.getElementById('todayBlocked').textContent = todayStats.blockedAttempts;
+    document.getElementById('todayCompleted').textContent = todayStats.challengesCompleted;
+
+    // Success rate = how often the extension successfully kept user away (didn't bypass)
+    const successRate = todayStats.blockedAttempts > 0
+        ? Math.round(((todayStats.blockedAttempts - todayStats.challengesCompleted) / todayStats.blockedAttempts) * 100)
+        : 0;
+    document.getElementById('successRate').textContent = `${successRate}%`;
+
+    // Generate 14-day chart
+    renderChart(stats.dailyStats);
+
+    // Display top domains
+    renderTopDomains(stats.dailyStats);
+}
+
+// Render the 14-day chart
+function renderChart(dailyStats) {
+    const chartContainer = document.getElementById('chartContainer');
+    const today = new Date();
+    const dates = [];
+    const maxValue = getMaxDailyValue(dailyStats);
+
+    // Generate last 14 days
+    for (let i = 13; i >= 0; i--) {
+        const date = new Date(today.getTime() - (i * 24 * 60 * 60 * 1000));
+        dates.push(date.toISOString().split('T')[0]);
+    }
+
+    // Create chart bars
+    const chartBars = dates.map(date => {
+        const dayStats = dailyStats[date] || { blockedAttempts: 0, challengesCompleted: 0 };
+        const attempts = dayStats.blockedAttempts;
+        const completed = dayStats.challengesCompleted;
+        const height = maxValue > 0 ? (attempts / maxValue) * 100 : 0;
+
+        const dayLabel = new Date(date).toLocaleDateString('en-US', { weekday: 'short' });
+
+        return `
+            <div class="chart-bar blocked" style="height: ${height}%">
+                <div class="chart-bar-tooltip">
+                    ${dayLabel}: ${attempts} blocked, ${completed} completed
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Create labels
+    const chartLabels = dates.map(date => {
+        const day = new Date(date).getDate();
+        return `<div class="chart-label">${day}</div>`;
+    }).join('');
+
+    chartContainer.innerHTML = `
+        <div style="display: flex; align-items: end; gap: 3px; height: 100px;">
+            ${chartBars}
+        </div>
+        <div class="chart-labels">
+            ${chartLabels}
+        </div>
+    `;
+}
+
+// Get maximum daily value for chart scaling
+function getMaxDailyValue(dailyStats) {
+    let max = 0;
+    for (const [date, stats] of Object.entries(dailyStats)) {
+        max = Math.max(max, stats.blockedAttempts || 0);
+    }
+    return Math.max(max, 1); // Minimum of 1 to avoid division by zero
+}
+
+// Render top blocked domains
+function renderTopDomains(dailyStats) {
+    const domainTotals = {};
+
+    // Aggregate domain stats across all days
+    for (const [date, dayStats] of Object.entries(dailyStats)) {
+        for (const [domain, domainStats] of Object.entries(dayStats.domains || {})) {
+            if (!domainTotals[domain]) {
+                domainTotals[domain] = { attempts: 0, completed: 0 };
+            }
+            domainTotals[domain].attempts += domainStats.attempts || 0;
+            domainTotals[domain].completed += domainStats.completed || 0;
+        }
+    }
+
+    // Sort by total attempts
+    const sortedDomains = Object.entries(domainTotals)
+        .sort(([,a], [,b]) => b.attempts - a.attempts)
+        .slice(0, 5); // Top 5 domains
+
+    const domainStatsList = document.getElementById('domainStatsList');
+
+    if (sortedDomains.length === 0) {
+        domainStatsList.innerHTML = '<div class="no-stats">No domain statistics yet</div>';
+        return;
+    }
+
+    domainStatsList.innerHTML = sortedDomains.map(([domain, stats]) => `
+        <div class="domain-stat-item">
+            <div class="domain-stat-name">${domain}</div>
+            <div class="domain-stat-numbers">
+                <span class="domain-stat-attempts">${stats.attempts} blocked</span>
+                <span class="domain-stat-completed">${stats.completed} completed</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Display empty statistics when no data is available
+function displayEmptyStatistics() {
+    document.getElementById('todayBlocked').textContent = '0';
+    document.getElementById('todayCompleted').textContent = '0';
+    document.getElementById('successRate').textContent = '0%';
+
+    document.getElementById('chartContainer').innerHTML = '<div class="no-stats">No data available yet</div>';
+    document.getElementById('domainStatsList').innerHTML = '<div class="no-stats">No domain statistics yet</div>';
+}
+
+// Reset all statistics
+async function resetStatistics() {
+    try {
+        await chrome.runtime.sendMessage({ action: 'resetStatistics' });
+        console.log('WaitAMinute: Statistics reset successfully');
+
+        // Refresh the statistics display
+        await loadStatistics();
+
+        // Show success message
+        alert('Statistics have been reset successfully.');
+    } catch (error) {
+        console.error('Failed to reset statistics:', error);
+        alert('Failed to reset statistics. Please try again.');
+    }
 }

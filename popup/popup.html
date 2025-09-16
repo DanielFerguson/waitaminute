@@ -18,13 +18,55 @@
             </label>
         </header>
 
-        <div class="add-domain">
-            <input type="text" id="domainInput" placeholder="Enter domain (e.g., twitter.com)">
-            <button id="addButton">Add</button>
+        <!-- Navigation tabs -->
+        <div class="nav-tabs">
+            <button class="nav-tab active" data-tab="domains">Domains</button>
+            <button class="nav-tab" data-tab="statistics">Statistics</button>
+            <button class="nav-tab" data-tab="settings">Settings</button>
         </div>
 
-        <div class="domain-list" id="domainList">
-            <!-- Domains will be added here dynamically -->
+        <!-- Domains tab content -->
+        <div class="tab-content active" id="domains-tab">
+            <div class="add-domain">
+                <input type="text" id="domainInput" placeholder="Enter domain (e.g., twitter.com)">
+                <button id="addButton">Add</button>
+            </div>
+
+            <div class="domain-list" id="domainList">
+                <!-- Domains will be added here dynamically -->
+            </div>
+        </div>
+
+        <!-- Statistics tab content -->
+        <div class="tab-content" id="statistics-tab">
+            <div class="stats-summary">
+                <div class="stat-card">
+                    <div class="stat-number" id="todayBlocked">0</div>
+                    <div class="stat-label">Today's Blocks</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="todayCompleted">0</div>
+                    <div class="stat-label">Challenges Completed</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successRate">0%</div>
+                    <div class="stat-label">Focus Success</div>
+                </div>
+            </div>
+
+            <div class="stats-chart">
+                <h3>Past 14 Days</h3>
+                <div class="chart-container" id="chartContainer">
+                    <!-- Chart will be rendered here -->
+                </div>
+            </div>
+
+            <div class="top-domains">
+                <h3>Most Blocked Domains</h3>
+                <div class="domain-stats-list" id="domainStatsList">
+                    <!-- Domain stats will be rendered here -->
+                </div>
+            </div>
         </div>
 
         <!-- Modal for configuring time slots -->
@@ -71,27 +113,35 @@
             </div>
         </div>
 
-        <div class="settings">
-            <h3>Settings</h3>
-            <div class="setting-item">
-                <label for="challengeType">Challenge Type:</label>
-                <select id="challengeType">
-                    <option value="countdown">Countdown Timer</option>
-                    <option value="math">Simple Math</option>
-                    <option value="turnstile">Cloudflare Turnstile</option>
-                </select>
-            </div>
-            <div class="setting-item" id="waitDurationSection">
-                <label for="waitDuration">Wait Duration (seconds):</label>
-                <input type="number" id="waitDuration" min="5" max="300" value="30">
-            </div>
-            <div class="setting-item" id="turnstileKeySection" style="display: none;">
-                <label for="turnstileKey">Turnstile Site Key:</label>
-                <input type="text" id="turnstileKey" placeholder="Enter your site key">
-            </div>
-            <div class="setting-item">
-                <label for="bypassDuration">Bypass Duration (minutes):</label>
-                <input type="number" id="bypassDuration" min="1" max="60" value="10">
+        <!-- Settings tab content -->
+        <div class="tab-content" id="settings-tab">
+            <div class="settings">
+                <h3>Settings</h3>
+                <div class="setting-item">
+                    <label for="challengeType">Challenge Type:</label>
+                    <select id="challengeType">
+                        <option value="countdown">Countdown Timer</option>
+                        <option value="math">Simple Math</option>
+                        <option value="turnstile">Cloudflare Turnstile</option>
+                    </select>
+                </div>
+                <div class="setting-item" id="waitDurationSection">
+                    <label for="waitDuration">Wait Duration (seconds):</label>
+                    <input type="number" id="waitDuration" min="5" max="300" value="30">
+                </div>
+                <div class="setting-item" id="turnstileKeySection" style="display: none;">
+                    <label for="turnstileKey">Turnstile Site Key:</label>
+                    <input type="text" id="turnstileKey" placeholder="Enter your site key">
+                </div>
+                <div class="setting-item">
+                    <label for="bypassDuration">Bypass Duration (minutes):</label>
+                    <input type="number" id="bypassDuration" min="1" max="60" value="10">
+                </div>
+                <div class="setting-item">
+                    <label>Statistics:</label>
+                    <button id="resetStatistics" class="btn-secondary reset-btn">Reset All Statistics</button>
+                    <p class="setting-description">This will permanently delete all statistics data.</p>
+                </div>
             </div>
         </div>
     </div>
