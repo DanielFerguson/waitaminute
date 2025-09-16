@@ -3,8 +3,8 @@
 // Initialize default settings on install
 chrome.runtime.onInstalled.addListener(async () => {
     // Set default settings if not already set
-    const result = await chrome.storage.sync.get(['settings', 'blockedDomains']);
-    
+    const result = await chrome.storage.sync.get(['settings', 'blockedDomains', 'blockedDomainsV2']);
+
     if (!result.settings) {
         await chrome.storage.sync.set({
             settings: {
@@ -15,10 +15,19 @@ chrome.runtime.onInstalled.addListener(async () => {
             }
         });
     }
-    
-    if (!result.blockedDomains) {
+
+    // Migrate old blockedDomains to new format if needed
+    if (result.blockedDomains && !result.blockedDomainsV2) {
+        const migratedDomains = result.blockedDomains.map(domain => ({
+            domain: domain,
+            timeSlots: [],
+            alwaysBlock: true,
+            blockType: 'soft'
+        }));
+        await chrome.storage.sync.set({ blockedDomainsV2: migratedDomains });
+    } else if (!result.blockedDomainsV2) {
         await chrome.storage.sync.set({
-            blockedDomains: []
+            blockedDomainsV2: []
         });
     }
     

@@ -195,3 +195,251 @@ footer a {
 footer a:hover {
     text-decoration: underline;
 }
+
+/* Modal styles */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto;
+    padding: 0;
+    border-radius: 8px;
+    width: 90%;
+    max-width: 500px;
+    max-height: 90vh;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    flex-direction: column;
+}
+
+.modal-header {
+    padding: 15px 20px;
+    border-bottom: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h3 {
+    margin: 0;
+    font-size: 18px;
+}
+
+.close-modal {
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+    line-height: 20px;
+}
+
+.close-modal:hover {
+    color: #000;
+}
+
+.modal-body {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-shrink: 0;
+}
+
+.domain-display {
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    margin-bottom: 20px;
+    padding: 10px;
+    background: #f5f5f5;
+    border-radius: 4px;
+}
+
+.block-type-section,
+.always-block-section {
+    margin-bottom: 20px;
+}
+
+.radio-group {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-top: 10px;
+}
+
+.radio-group label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.radio-group input[type="radio"] {
+    margin-right: 8px;
+}
+
+.always-block-section label {
+    display: flex;
+    align-items: center;
+    cursor: pointer;
+}
+
+.always-block-section input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+.time-slot-config h4 {
+    margin-bottom: 10px;
+    font-size: 14px;
+}
+
+.time-slot-list {
+    margin-bottom: 15px;
+}
+
+.time-slot-item {
+    background: #f9f9f9;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.time-slot-times {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.time-slot-times input[type="time"] {
+    padding: 5px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.days-selector {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+}
+
+.day-checkbox {
+    display: flex;
+    align-items: center;
+    padding: 5px 10px;
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.day-checkbox input[type="checkbox"] {
+    margin-right: 5px;
+}
+
+.day-checkbox.checked {
+    background: #4CAF50;
+    color: white;
+    border-color: #4CAF50;
+}
+
+.btn-primary,
+.btn-secondary {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.btn-primary {
+    background: #4CAF50;
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #45a049;
+}
+
+.btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+}
+
+.btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+.remove-slot-btn {
+    background: #f44336;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    margin-top: 10px;
+}
+
+.remove-slot-btn:hover {
+    background: #d32f2f;
+}
+
+/* Domain item enhancements */
+.domain-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+.domain-item:hover {
+    background-color: #f5f5f5;
+}
+
+.domain-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.domain-time-info {
+    font-size: 12px;
+    color: #666;
+    margin-top: 4px;
+}
+
+.block-indicator {
+    display: inline-block;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 11px;
+    margin-left: 8px;
+}
+
+.block-indicator.hard {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.block-indicator.soft {
+    background: #e8f5e9;
+    color: #2e7d32;
+}

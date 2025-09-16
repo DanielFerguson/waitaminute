@@ -265,3 +265,60 @@
 .waitaminute-overlay * {
     z-index: 2147483647 !important;
 }
+
+/* Block reason styling */
+.block-reason {
+    font-size: 14px !important;
+    color: #888 !important;
+    margin: 5px 0 !important;
+    font-style: italic !important;
+    font-weight: normal !important;
+}
+
+/* Hard block styling */
+.waitaminute-hard-block .waitaminute-container {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+
+.waitaminute-hard-block .waitaminute-header h2 {
+    color: white !important;
+}
+
+.waitaminute-hard-block .waitaminute-header p {
+    color: rgba(255, 255, 255, 0.9) !important;
+}
+
+.waitaminute-hard-block .waitaminute-footer p {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.hard-block-message {
+    text-align: center !important;
+    padding: 30px !important;
+    background: rgba(255, 255, 255, 0.95) !important;
+    border-radius: 8px !important;
+    margin: 20px !important;
+}
+
+.block-icon {
+    font-size: 48px !important;
+    margin-bottom: 20px !important;
+}
+
+.hard-block-message h3 {
+    color: #333 !important;
+    margin: 0 0 15px 0 !important;
+    font-size: 20px !important;
+}
+
+.hard-block-message p {
+    color: #666 !important;
+    margin: 0 0 10px 0 !important;
+    line-height: 1.6 !important;
+}
+
+.hard-block-message .suggestion {
+    color: #4CAF50 !important;
+    font-weight: 500 !important;
+    margin-top: 20px !important;
+}

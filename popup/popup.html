@@ -27,6 +27,50 @@
             <!-- Domains will be added here dynamically -->
         </div>
 
+        <!-- Modal for configuring time slots -->
+        <div id="timeSlotModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>Configure Time Slots</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="domain-display" id="modalDomain"></div>
+
+                    <div class="block-type-section">
+                        <label>Block Type:</label>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="blockType" value="soft" checked>
+                                <span>Soft Block (with challenge)</span>
+                            </label>
+                            <label>
+                                <input type="radio" name="blockType" value="hard">
+                                <span>Hard Block (no bypass)</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="always-block-section">
+                        <label>
+                            <input type="checkbox" id="alwaysBlock">
+                            <span>Always block (ignore time slots)</span>
+                        </label>
+                    </div>
+
+                    <div id="timeSlotConfig" class="time-slot-config">
+                        <h4>Time Slots</h4>
+                        <div class="time-slot-list" id="timeSlotList"></div>
+                        <button id="addTimeSlot" class="btn-secondary">Add Time Slot</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="saveTimeSlots" class="btn-primary">Save</button>
+                    <button id="cancelTimeSlots" class="btn-secondary">Cancel</button>
+                </div>
+            </div>
+        </div>
+
         <div class="settings">
             <h3>Settings</h3>
             <div class="setting-item">
