@@ -3,6 +3,9 @@
     let settings = null;
     let blockedDomainsV2 = [];
     let bypassedDomains = {};
+    const PRELOAD_SHIELD_ID = 'waitaminute-preload-shield';
+
+    ensurePreloadShield();
 
     // Initialize
     async function init() {
@@ -25,6 +28,35 @@
                 migrateBlockedDomains(changes.blockedDomains.newValue);
             }
         });
+    }
+
+    // Create a simple loading shield to prevent the page flashing before we decide what to do
+    function ensurePreloadShield() {
+        if (document.getElementById(PRELOAD_SHIELD_ID)) return;
+
+        const shield = document.createElement('div');
+        shield.id = PRELOAD_SHIELD_ID;
+        shield.style.cssText = [
+            'position:fixed',
+            'inset:0',
+            'background:rgba(0,0,0,0.98)',
+            'z-index:2147483646',
+            'transition:opacity 0.3s ease'
+        ].join(';');
+
+        document.documentElement.appendChild(shield);
+    }
+
+    function removePreloadShield() {
+        const shield = document.getElementById(PRELOAD_SHIELD_ID);
+        if (!shield) return;
+
+        shield.style.opacity = '0';
+        shield.style.pointerEvents = 'none';
+        setTimeout(() => {
+            const existing = document.getElementById(PRELOAD_SHIELD_ID);
+            if (existing) existing.remove();
+        }, 300);
     }
 
     // Load settings from storage
@@ -184,6 +216,7 @@
             // For soft blocks, check if domain has been bypassed recently
             const bypassTime = bypassedDomains[currentDomain];
             if (bypassTime && Date.now() - bypassTime < settings.bypassDuration * 60 * 1000) {
+                removeOverlay();
                 return; // Still in bypass period
             }
 
@@ -199,12 +232,16 @@
         if (overlay) {
             overlay.remove();
         }
+        removePreloadShield();
     }
 
     // Show hard block (no bypass option)
     function showHardBlock(reason) {
         // Check if overlay already exists
-        if (document.getElementById('waitaminute-overlay')) return;
+        if (document.getElementById('waitaminute-overlay')) {
+            removePreloadShield();
+            return;
+        }
 
         // Create overlay
         const overlay = document.createElement('div');
@@ -233,14 +270,19 @@
             </div>
         `;
 
+        const appendTarget = document.body || document.documentElement;
         overlay.appendChild(container);
-        document.body.appendChild(overlay);
+        appendTarget.appendChild(overlay);
+        removePreloadShield();
     }
 
     // Show challenge overlay (soft block)
     function showChallenge(reason) {
         // Check if overlay already exists
-        if (document.getElementById('waitaminute-overlay')) return;
+        if (document.getElementById('waitaminute-overlay')) {
+            removePreloadShield();
+            return;
+        }
 
         // Create overlay
         const overlay = document.createElement('div');
@@ -251,22 +293,27 @@
         const container = document.createElement('div');
         container.className = 'waitaminute-container';
 
+        const appendTarget = document.body || document.documentElement;
+        let postAppendAction = null;
+
         // Add content based on challenge type
         if (settings.challengeType === 'countdown') {
             container.innerHTML = createCountdownChallenge(reason);
-            overlay.appendChild(container);
-            document.body.appendChild(overlay);
-            setupCountdownChallenge();
+            postAppendAction = setupCountdownChallenge;
         } else if (settings.challengeType === 'turnstile' && settings.turnstileKey) {
             container.innerHTML = createTurnstileChallenge(reason);
-            overlay.appendChild(container);
-            document.body.appendChild(overlay);
-            loadTurnstileScript();
+            postAppendAction = loadTurnstileScript;
         } else {
             container.innerHTML = createMathChallenge(reason);
-            overlay.appendChild(container);
-            document.body.appendChild(overlay);
-            setupMathChallenge();
+            postAppendAction = setupMathChallenge;
+        }
+
+        overlay.appendChild(container);
+        appendTarget.appendChild(overlay);
+        removePreloadShield();
+
+        if (postAppendAction) {
+            postAppendAction();
         }
     }
 
