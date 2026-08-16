@@ -120,12 +120,6 @@
     border-radius: 4px !important;
 }
 
-/* Turnstile Widget Container */
-#turnstile-widget {
-    display: inline-block !important;
-    min-height: 65px !important;
-}
-
 /* Footer */
 .waitaminute-footer {
     margin-top: 20px !important;
@@ -321,4 +315,15 @@
     color: #4CAF50 !important;
     font-weight: 500 !important;
     margin-top: 20px !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .waitaminute-overlay,
+    .waitaminute-container,
+    .countdown-progress,
+    #math-submit,
+    .skip-button {
+        animation: none !important;
+        transition: none !important;
+    }
 }

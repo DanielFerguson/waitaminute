@@ -1,0 +1,13 @@
+{
+  "name": "waitaminute",
+  "private": true,
+  "scripts": {
+    "test": "node --test tests/rules.test.js",
+    "check": "node --check shared/rules.js && node --check content/content.js && node --check background/service-worker.js && node --check popup/popup.js && node --check block/block.js",
+    "test:extension": "playwright test",
+    "assets": "bash scripts/generate-assets.sh",
+    "package": "bash scripts/package.sh",
+    "full": "npm run check && npm test && npm run test:extension && npm run assets && npm run package"
+  },
+  "devDependencies": { "@playwright/test": "1.56.1" }
+}

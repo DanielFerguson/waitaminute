@@ -1,314 +1,107 @@
-// Background service worker for WaitAMinute extension
+importScripts('../shared/rules.js');
 
-// Initialize default settings on install
-chrome.runtime.onInstalled.addListener(async () => {
-    // Set default settings if not already set
-    const result = await chrome.storage.sync.get(['settings', 'blockedDomains', 'blockedDomainsV2']);
+const DEFAULT_SETTINGS = { enabled: true, challengeType: 'countdown', waitDuration: 30, bypassDuration: 10 };
+const STATS_EMPTY = () => ({ dailyStats: {}, totalChallenges: 0, completedChallenges: 0, blockedVisits: 0, domainStats: {} });
+const CLEANUP_ALARM = 'waitaminute-cleanup-statistics';
 
-    if (!result.settings) {
-        await chrome.storage.sync.set({
-            settings: {
-                enabled: true,
-                challengeType: 'math',
-                turnstileKey: '',
-                bypassDuration: 10
-            }
-        });
-    }
-
-    // Migrate old blockedDomains to new format if needed
-    if (result.blockedDomains && !result.blockedDomainsV2) {
-        const migratedDomains = result.blockedDomains.map(domain => ({
-            domain: domain,
-            timeSlots: [],
-            alwaysBlock: true,
-            blockType: 'soft'
-        }));
-        await chrome.storage.sync.set({ blockedDomainsV2: migratedDomains });
-    } else if (!result.blockedDomainsV2) {
-        await chrome.storage.sync.set({
-            blockedDomainsV2: []
-        });
-    }
-    
-    // Initialize statistics
-    const stats = await chrome.storage.local.get(['statistics']);
-    if (!stats.statistics) {
-        await chrome.storage.local.set({
-            statistics: {
-                // New daily-based format
-                dailyStats: {},
-                // Legacy format for migration
-                totalChallenges: 0,
-                completedChallenges: 0,
-                blockedVisits: 0,
-                domainStats: {}
-            }
-        });
-    } else if (!stats.statistics.dailyStats) {
-        // Migrate existing stats to daily format
-        await migrateStatistics();
-    }
-});
-
-// Listen for messages from content script and popup
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    switch (request.action) {
-        case 'domainsUpdated':
-            handleDomainsUpdate(request.domains);
-            break;
-            
-        case 'settingsUpdated':
-            handleSettingsUpdate(request.settings);
-            break;
-            
-        case 'challengeCompleted':
-            trackChallengeCompletion(request.domain);
-            break;
-            
-        case 'getStatistics':
-            getStatistics().then(stats => sendResponse(stats));
-            return true; // Keep channel open for async response
-
-        case 'resetStatistics':
-            resetStatistics().then(() => sendResponse({ success: true }));
-            return true; // Keep channel open for async response
-
-        default:
-            break;
-    }
-});
-
-// Handle domains update
-function handleDomainsUpdate(domains) {
-    // Domains are already saved by popup, just log for debugging
-    console.log('Blocked domains updated:', domains);
-}
-
-// Handle settings update
-function handleSettingsUpdate(settings) {
-    // Settings are already saved by popup, just log for debugging
-    console.log('Settings updated:', settings);
-}
-
-// Get today's date string in YYYY-MM-DD format
-function getTodayDateString() {
-    return new Date().toISOString().split('T')[0];
-}
-
-// Migrate old statistics to daily format
-async function migrateStatistics() {
-    const result = await chrome.storage.local.get(['statistics']);
-    const oldStats = result.statistics || {};
-
-    const today = getTodayDateString();
-    const newStats = {
-        dailyStats: {
-            [today]: {
-                blockedAttempts: oldStats.totalChallenges || 0,
-                challengesCompleted: oldStats.completedChallenges || 0,
-                domains: {}
-            }
-        },
-        // Keep legacy stats for reference
-        totalChallenges: oldStats.totalChallenges || 0,
-        completedChallenges: oldStats.completedChallenges || 0,
-        blockedVisits: oldStats.blockedVisits || 0,
-        domainStats: oldStats.domainStats || {}
-    };
-
-    // Migrate domain stats to today's entry
-    if (oldStats.domainStats) {
-        for (const [domain, domainData] of Object.entries(oldStats.domainStats)) {
-            newStats.dailyStats[today].domains[domain] = {
-                attempts: domainData.challenges || 0,
-                completed: domainData.completed || 0
-            };
-        }
-    }
-
-    await chrome.storage.local.set({ statistics: newStats });
-}
-
-// Initialize today's stats if they don't exist
-async function ensureTodayStats() {
-    const today = getTodayDateString();
-    const result = await chrome.storage.local.get(['statistics']);
-    const stats = result.statistics || {
-        dailyStats: {},
-        totalChallenges: 0,
-        completedChallenges: 0,
-        blockedVisits: 0,
-        domainStats: {}
-    };
-
-    if (!stats.dailyStats) {
-        stats.dailyStats = {};
-    }
-
-    if (!stats.dailyStats[today]) {
-        stats.dailyStats[today] = {
-            blockedAttempts: 0,
-            challengesCompleted: 0,
-            domains: {}
-        };
-        await chrome.storage.local.set({ statistics: stats });
-    }
-
-    return stats;
-}
-
-// Track challenge completion for statistics
-async function trackChallengeCompletion(domain) {
-    console.log('WaitAMinute: Tracking challenge completion for:', domain);
-    const stats = await ensureTodayStats();
-    const today = getTodayDateString();
-
-    // Update today's stats
-    stats.dailyStats[today].challengesCompleted++;
-    console.log('WaitAMinute: Updated challenges completed to:', stats.dailyStats[today].challengesCompleted);
-
-    // Update domain-specific stats for today
-    if (!stats.dailyStats[today].domains[domain]) {
-        stats.dailyStats[today].domains[domain] = {
-            attempts: 0,
-            completed: 0
-        };
-    }
-
-    stats.dailyStats[today].domains[domain].completed++;
-    console.log('WaitAMinute: Domain', domain, 'completed challenges:', stats.dailyStats[today].domains[domain].completed);
-
-    // Update legacy stats for backward compatibility
-    stats.completedChallenges = (stats.completedChallenges || 0) + 1;
-    if (!stats.domainStats) stats.domainStats = {};
-    if (!stats.domainStats[domain]) {
-        stats.domainStats[domain] = {
-            challenges: 0,
-            completed: 0,
-            lastCompleted: null
-        };
-    }
-    stats.domainStats[domain].completed++;
-    stats.domainStats[domain].lastCompleted = new Date().toISOString();
-
-    await chrome.storage.local.set({ statistics: stats });
-    console.log('WaitAMinute: Statistics saved to storage');
-}
-
-// Get statistics
-async function getStatistics() {
-    const result = await chrome.storage.local.get(['statistics']);
-    return result.statistics || {
-        dailyStats: {},
-        totalChallenges: 0,
-        completedChallenges: 0,
-        blockedVisits: 0,
-        domainStats: {}
-    };
-}
-
-// Reset all statistics
-async function resetStatistics() {
-    const newStats = {
-        dailyStats: {},
-        totalChallenges: 0,
-        completedChallenges: 0,
-        blockedVisits: 0,
-        domainStats: {}
-    };
-    await chrome.storage.local.set({ statistics: newStats });
-    console.log('WaitAMinute: All statistics have been reset');
-}
-
-// Track page visits to blocked domains
-chrome.webNavigation.onBeforeNavigate.addListener(async (details) => {
-    // Only track main frame navigations
-    if (details.frameId !== 0) return;
-
-    const result = await chrome.storage.sync.get(['blockedDomainsV2', 'settings']);
-    const blockedDomainsV2 = result.blockedDomainsV2 || [];
-    const settings = result.settings || { enabled: true };
-
-    if (!settings.enabled) return;
-
-    // Parse URL
-    const url = new URL(details.url);
-    const hostname = url.hostname.replace(/^www\./, '');
-
-    // Check if domain is blocked using V2 format
-    const isBlocked = blockedDomainsV2.some(domainItem => {
-        return hostname === domainItem.domain || hostname.endsWith('.' + domainItem.domain);
+chrome.runtime.onInstalled.addListener(async ({ reason }) => {
+    // 1.1 intentionally starts from one canonical, clean configuration model.
+    if (reason === 'update') await chrome.storage.sync.remove(['blockedDomains', 'blockedDomainsV2']);
+    const { settings, rules } = await chrome.storage.sync.get(['settings', 'rules']);
+    await chrome.storage.sync.set({
+        settings: normaliseSettings(settings),
+        rules: WaitAMinuteRules.validateRules(rules) || []
     });
+    if (!(await chrome.storage.local.get('statistics')).statistics) await chrome.storage.local.set({ statistics: STATS_EMPTY() });
+    await ensureCleanupAlarm();
+});
 
-    if (isBlocked) {
-        console.log('WaitAMinute: Blocked navigation to:', hostname);
-        // Track blocked visit using new daily format
-        const stats = await ensureTodayStats();
-        const today = getTodayDateString();
+function normaliseSettings(value) {
+    const settings = { ...DEFAULT_SETTINGS, ...(value || {}) };
+    settings.enabled = Boolean(settings.enabled);
+    settings.challengeType = settings.challengeType === 'math' ? 'math' : 'countdown';
+    settings.waitDuration = Math.min(300, Math.max(5, Number(settings.waitDuration) || DEFAULT_SETTINGS.waitDuration));
+    settings.bypassDuration = Math.min(60, Math.max(1, Number(settings.bypassDuration) || DEFAULT_SETTINGS.bypassDuration));
+    return settings;
+}
 
-        // Update today's stats
-        stats.dailyStats[today].blockedAttempts++;
-        console.log('WaitAMinute: Updated blocked attempts to:', stats.dailyStats[today].blockedAttempts);
+async function ensureCleanupAlarm() {
+    if (!await chrome.alarms.get(CLEANUP_ALARM)) await chrome.alarms.create(CLEANUP_ALARM, { periodInMinutes: 24 * 60 });
+}
+ensureCleanupAlarm();
+chrome.alarms.onAlarm.addListener((alarm) => { if (alarm.name === CLEANUP_ALARM) cleanupOldStats(); });
 
-        // Update domain-specific stats for today
-        if (!stats.dailyStats[today].domains[hostname]) {
-            stats.dailyStats[today].domains[hostname] = {
-                attempts: 0,
-                completed: 0
-            };
-        }
-
-        stats.dailyStats[today].domains[hostname].attempts++;
-        console.log('WaitAMinute: Domain', hostname, 'blocked attempts:', stats.dailyStats[today].domains[hostname].attempts);
-
-        // Update legacy stats for backward compatibility
-        stats.blockedVisits = (stats.blockedVisits || 0) + 1;
-        stats.totalChallenges = (stats.totalChallenges || 0) + 1;
-
-        if (!stats.domainStats) stats.domainStats = {};
-        if (!stats.domainStats[hostname]) {
-            stats.domainStats[hostname] = {
-                challenges: 0,
-                completed: 0,
-                lastCompleted: null
-            };
-        }
-
-        stats.domainStats[hostname].challenges++;
-
-        await chrome.storage.local.set({ statistics: stats });
-        console.log('WaitAMinute: Navigation statistics saved');
+chrome.runtime.onMessage.addListener((request, _sender, sendResponse) => {
+    const respond = (promise) => { promise.then(sendResponse).catch((error) => sendResponse({ error: error.message })); return true; };
+    switch (request.action) {
+        case 'getBypass': return respond(getBypass(request.domain));
+        case 'createBypass': return respond(createBypass(request.domain, request.minutes));
+        case 'createHardBlock': return respond(createHardBlock(request.target, request.domain));
+        case 'getHardBlock': return respond(getHardBlock(request.nonce));
+        case 'blockedAttempt': trackBlockedAttempt(request.domain); break;
+        case 'challengeCompleted': trackChallengeCompletion(request.domain); break;
+        case 'getStatistics': return respond(getStatistics());
+        case 'resetStatistics': return respond(resetStatistics());
     }
 });
 
-// Clean up old statistics data (keep only last 14 days)
-async function cleanupOldStats() {
-    const result = await chrome.storage.local.get(['statistics']);
-    const stats = result.statistics;
-
-    if (!stats || !stats.dailyStats) return;
-
-    const today = new Date();
-    const fourteenDaysAgo = new Date(today.getTime() - (14 * 24 * 60 * 60 * 1000));
-    const cutoffDate = fourteenDaysAgo.toISOString().split('T')[0];
-
-    let hasChanges = false;
-    for (const dateKey of Object.keys(stats.dailyStats)) {
-        if (dateKey < cutoffDate) {
-            delete stats.dailyStats[dateKey];
-            hasChanges = true;
-        }
-    }
-
-    if (hasChanges) {
-        await chrome.storage.local.set({ statistics: stats });
-        console.log('Cleaned up old statistics data');
-    }
+async function getBypass(domain) {
+    const key = `bypass:${WaitAMinuteRules.normaliseHostname(domain)}`;
+    const value = (await chrome.storage.session.get(key))[key];
+    if (Number(value) > Date.now()) return { active: true };
+    if (value) await chrome.storage.session.remove(key);
+    return { active: false };
 }
 
-// Periodic cleanup (every hour)
-setInterval(async () => {
-    await cleanupOldStats();
-    console.log('Periodic cleanup check completed');
-}, 3600000); // 1 hour
+async function createBypass(domain, minutes) {
+    const duration = Math.min(60, Math.max(1, Number(minutes) || DEFAULT_SETTINGS.bypassDuration));
+    await chrome.storage.session.set({ [`bypass:${WaitAMinuteRules.normaliseHostname(domain)}`]: Date.now() + duration * 60000 });
+    return { success: true };
+}
+
+async function createHardBlock(target, domain) {
+    const url = new URL(target);
+    if (!/^https?:$/.test(url.protocol) || !WaitAMinuteRules.domainMatches(url.hostname, domain)) throw new Error('Invalid hard block target');
+    const nonce = crypto.randomUUID();
+    await chrome.storage.session.set({ [`hardBlock:${nonce}`]: { target: url.href, domain, createdAt: Date.now() } });
+    return { url: chrome.runtime.getURL(`block/block.html?nonce=${encodeURIComponent(nonce)}`) };
+}
+
+async function getHardBlock(nonce) {
+    const key = `hardBlock:${nonce}`;
+    const value = (await chrome.storage.session.get(key))[key];
+    if (!value || Date.now() - value.createdAt > 10 * 60 * 1000) return { active: false };
+    return { active: true, target: value.target, domain: value.domain };
+}
+
+async function getMutableStats() {
+    const stats = normaliseStats((await chrome.storage.local.get('statistics')).statistics);
+    const today = WaitAMinuteRules.localDateKey();
+    stats.dailyStats[today] ||= { blockedAttempts: 0, challengesCompleted: 0, domains: {} };
+    return { stats, today };
+}
+function normaliseStats(value) { return { ...STATS_EMPTY(), ...(value || {}), dailyStats: value?.dailyStats || {}, domainStats: value?.domainStats || {} }; }
+function domainStatsFor(stats, today, domain) {
+    stats.dailyStats[today].domains[domain] ||= { attempts: 0, completed: 0 };
+    stats.domainStats[domain] ||= { challenges: 0, completed: 0, lastCompleted: null };
+}
+async function trackBlockedAttempt(domain) {
+    const { stats, today } = await getMutableStats(); domainStatsFor(stats, today, domain);
+    stats.dailyStats[today].blockedAttempts++; stats.dailyStats[today].domains[domain].attempts++;
+    stats.blockedVisits++; stats.totalChallenges++; stats.domainStats[domain].challenges++;
+    await chrome.storage.local.set({ statistics: stats });
+}
+async function trackChallengeCompletion(domain) {
+    const { stats, today } = await getMutableStats(); domainStatsFor(stats, today, domain);
+    stats.dailyStats[today].challengesCompleted++; stats.dailyStats[today].domains[domain].completed++;
+    stats.completedChallenges++; stats.domainStats[domain].completed++; stats.domainStats[domain].lastCompleted = new Date().toISOString();
+    await chrome.storage.local.set({ statistics: stats });
+}
+async function getStatistics() { return normaliseStats((await chrome.storage.local.get('statistics')).statistics); }
+async function resetStatistics() { await chrome.storage.local.set({ statistics: STATS_EMPTY() }); return { success: true }; }
+async function cleanupOldStats() {
+    const { stats } = await getMutableStats(); const cutoff = new Date(); cutoff.setDate(cutoff.getDate() - 14);
+    const cutoffKey = WaitAMinuteRules.localDateKey(cutoff);
+    for (const key of Object.keys(stats.dailyStats)) if (key < cutoffKey) delete stats.dailyStats[key];
+    await chrome.storage.local.set({ statistics: stats });
+}
