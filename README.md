@@ -1,6 +1,6 @@
 # WaitAMinute - Chrome Extension
 
-A Chrome extension that adds intentional friction before accessing distracting websites by requiring users to complete a CAPTCHA or Cloudflare Turnstile challenge.
+A Chrome extension that adds intentional friction before accessing distracting websites with a short countdown or simple math challenge.
 
 ## 🎯 Purpose
 
@@ -11,12 +11,10 @@ WaitAMinute helps you build better browsing habits by adding a moment of pause b
 - **Domain Blocking**: Add any website domain to your blocklist
 - **Time-Based Blocking**: Configure specific time slots when sites should be blocked
 - **Block Types**: Choose between soft blocks (with challenge) or hard blocks (no bypass)
-- **CAPTCHA Challenge**: Complete a verification challenge before accessing blocked sites
-- **Cloudflare Turnstile Integration**: Modern, privacy-friendly challenge system
-- **Fallback Options**: Simple math CAPTCHA when Turnstile is unavailable
+- **Intentional challenges**: Choose a countdown or simple math challenge before a soft block is bypassed
 - **Easy Management**: Simple popup interface to manage blocked domains and time slots
 - **Temporary Bypass**: Successfully completing a challenge grants temporary access
-- **Privacy Focused**: All data stored locally, no external tracking
+- **Private by design**: No analytics service or third-party challenge is used; statistics stay on this device
 
 ## 🚀 Installation
 
@@ -45,7 +43,7 @@ WaitAMinute helps you build better browsing habits by adding a moment of pause b
 
 2. **Accessing Blocked Sites**:
    - When you navigate to a blocked site, you'll see an overlay
-   - Complete the CAPTCHA or Turnstile challenge
+   - Complete the countdown or math challenge
    - Upon success, you'll have temporary access to the site
 
 3. **Managing Your Block List**:
@@ -55,14 +53,7 @@ WaitAMinute helps you build better browsing habits by adding a moment of pause b
 
 ## 🛠️ Configuration
 
-### Cloudflare Turnstile Setup (Optional)
-
-To use Cloudflare Turnstile instead of the default CAPTCHA:
-
-1. Get your Turnstile site key from [Cloudflare Dashboard](https://dash.cloudflare.com/sign-up/turnstile)
-2. Open the extension options
-3. Enter your site key in the settings
-4. Save and reload the extension
+Rules and settings are stored through Chrome Sync when it is enabled in Chrome. Bypasses are limited to the current browser session, and statistics are stored only on this device. Version 1.1 resets configurations created by earlier versions so the extension can use its simpler canonical rule format.
 
 ## 🏗️ Project Structure
 
@@ -96,19 +87,18 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## 📋 Roadmap
 
-- [ ] Chrome Web Store release
+- [ ] Chrome Web Store release — see `docs/release-checklist.md`
 - [ ] Custom challenge types (typing exercises, mindfulness prompts)
 - [x] Time-based blocking (e.g., only during work hours)
-- [ ] Statistics tracking (how many times you've reconsidered)
-- [ ] Sync settings across devices
+- [x] Statistics tracking (how many times you've reconsidered)
+- [x] Sync settings across devices
 - [ ] Firefox extension port
 - [ ] Custom timeout durations
 - [ ] Whitelist mode (block everything except specified sites)
 
 ## 🐛 Known Issues
 
-- Turnstile challenges may not work on some corporate networks
-- Some websites with complex routing may require page refresh after unlock
+- Hard blocks open an extension-owned page. Soft blocks use an isolated Shadow DOM to minimise page interference.
 
 ## 📄 License
 
@@ -117,7 +107,6 @@ MIT License - see [LICENSE](LICENSE) file for details
 ## 🙏 Acknowledgments
 
 - Inspired by productivity tools and digital wellness initiatives
-- Uses Cloudflare Turnstile for privacy-friendly challenges
 - Built with vanilla JavaScript for minimal dependencies
 
 ## 📧 Support
