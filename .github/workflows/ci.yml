@@ -1,5 +1,8 @@
 name: Verify extension
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
 permissions: { contents: read }
 jobs:
   verify:
@@ -10,5 +13,5 @@ jobs:
         with: { node-version: 22, cache: npm }
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: npm run full
+      - run: xvfb-run --auto-servernum npm run full
       - run: npm audit --omit=dev
