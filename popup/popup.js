@@ -1,41 +1,298 @@
-const DEFAULTS = { enabled: true, challengeType: 'countdown', waitDuration: 30, bypassDuration: 10 };
-const PRESETS = { weekday: [{ startTime: '09:00', endTime: '17:00', days: ['Mon','Tue','Wed','Thu','Fri'] }], evening: [{ startTime: '17:00', endTime: '21:00', days: ['Mon','Tue','Wed','Thu','Fri'] }], daily: [{ startTime: '09:00', endTime: '17:00', days: WaitAMinuteRules.DAYS }] };
-let state = { settings: DEFAULTS, rules: [] }; let editing = null; let confirmation = null;
+const { DAYS, formatTime, normaliseHostname, normaliseSettings, recentDateKeys, validateRules } = WaitAMinuteRules;
+const WEEKDAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+const PRESETS = {
+    weekday: [{ startTime: '09:00', endTime: '17:00', days: WEEKDAYS }],
+    evening: [{ startTime: '17:00', endTime: '21:00', days: WEEKDAYS }],
+    daily: [{ startTime: '09:00', endTime: '17:00', days: DAYS }]
+};
+let state = { settings: normaliseSettings(), rules: [] };
+let editing = null;
+let confirmation = null;
+let statusTimer = null;
 const $ = (id) => document.getElementById(id);
+
 document.addEventListener('DOMContentLoaded', init);
-async function init() { await load(); bind(); render(); }
-async function load() { const data = await chrome.storage.sync.get(['settings','rules']); state.settings = { ...DEFAULTS, ...(data.settings || {}) }; state.rules = WaitAMinuteRules.validateRules(data.rules) || []; }
-function bind() {
-  $('acknowledge').onclick = async () => { await chrome.storage.local.set({ onboardingAcknowledged: true }); render(); };
-  $('addButton').onclick = addRule; $('domainInput').onkeydown = (e) => { if (e.key === 'Enter') addRule(); };
-  $('domainList').onclick = (e) => { const domain = e.target.dataset.domain; if (e.target.matches('[data-edit]')) openRule(domain); if (e.target.matches('[data-remove]')) confirm(`Remove ${domain}?`, 'This will stop blocking the domain.', () => removeRule(domain)); };
-  $('enableToggle').onchange = () => saveSettings({ enabled: $('enableToggle').checked });
-  $('challengeType').onchange = () => saveSettings({ challengeType: $('challengeType').value });
-  $('waitDuration').onchange = () => saveSettings({ waitDuration: Number($('waitDuration').value) }); $('bypassDuration').onchange = () => saveSettings({ bypassDuration: Number($('bypassDuration').value) });
-  document.querySelectorAll('.tab').forEach((tab) => tab.onclick = () => selectTab(tab.dataset.tab));
-  $('scheduleMode').onchange = renderSchedule; $('addTimeSlot').onclick = () => { editing.timeSlots.push(defaultSlot()); renderSchedule(); };
-  $('saveRule').onclick = saveRule; $('exportConfig').onclick = exportConfig; $('importConfig').onchange = importConfig;
-  $('resetStatistics').onclick = () => confirm('Reset statistics?', 'This permanently deletes local statistics only.', resetStatistics);
-  $('confirmAction').onclick = () => confirmation?.();
+
+async function init() {
+    const [sync, local] = await Promise.all([
+        chrome.storage.sync.get(['settings', 'rules']),
+        chrome.storage.local.get('onboardingAcknowledged')
+    ]);
+    state = { settings: normaliseSettings(sync.settings), rules: validateRules(sync.rules) || [] };
+    bind();
+    showApp(Boolean(local.onboardingAcknowledged));
+    renderSettings();
+    renderRules();
+    renderStats();
 }
-async function render() { const local = await chrome.storage.local.get('onboardingAcknowledged'); $('onboarding').hidden = Boolean(local.onboardingAcknowledged); $('app').hidden = !local.onboardingAcknowledged; $('enableToggle').checked = state.settings.enabled; $('challengeType').value = state.settings.challengeType; $('waitDuration').value = state.settings.waitDuration; $('bypassDuration').value = state.settings.bypassDuration; $('waitDurationSection').hidden = state.settings.challengeType !== 'countdown'; renderRules(); renderStats(); }
-function renderRules() { $('domainList').innerHTML = state.rules.length ? state.rules.map((rule) => `<article class="rule"><div><strong>${escapeHtml(rule.domain)}</strong><p>${rule.blockType === 'hard' ? 'Hard block' : 'Soft block'} · ${scheduleText(rule)}</p></div><div><button data-edit data-domain="${escapeHtml(rule.domain)}">Edit</button><button data-remove data-domain="${escapeHtml(rule.domain)}" aria-label="Remove ${escapeHtml(rule.domain)}">Remove</button></div></article>`).join('') : '<p class="empty">No blocked domains yet.</p>'; }
-function escapeHtml(value) { const span = document.createElement('span'); span.textContent = value; return span.innerHTML; }
-function scheduleText(rule) { if (!rule.timeSlots.length) return 'All day'; const s = rule.timeSlots[0]; if (rule.timeSlots.length > 1) return `${rule.timeSlots.length} schedules`; return `${formatTime(s.startTime)}–${formatTime(s.endTime)} · ${s.days.length === 7 ? 'Daily' : s.days.join(', ')}`; }
-function formatTime(time) { return new Date(`2000-01-01T${time}:00`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }); }
-async function addRule() { const domain = WaitAMinuteRules.normaliseHostname($('domainInput').value); if (!WaitAMinuteRules.validateRules([{ domain, blockType: 'soft', timeSlots: [] }])) return status('Enter a valid domain, such as example.com.', true); if (state.rules.some((rule) => rule.domain === domain)) return status('That domain is already blocked.', true); state.rules.push({ domain, blockType: 'soft', timeSlots: [] }); $('domainInput').value = ''; openRule(domain); }
-function openRule(domain) { editing = structuredClone(state.rules.find((rule) => rule.domain === domain)); $('modalDomain').textContent = editing.domain; document.querySelector(`input[name="blockType"][value="${editing.blockType}"]`).checked = true; $('scheduleMode').value = presetName(editing.timeSlots); renderSchedule(); $('ruleDialog').showModal(); }
-function presetName(slots) { for (const [name, preset] of Object.entries(PRESETS)) if (JSON.stringify(slots) === JSON.stringify(preset)) return name; return slots.length ? 'custom' : 'all-day'; }
-function defaultSlot() { return { startTime: '09:00', endTime: '17:00', days: ['Mon','Tue','Wed','Thu','Fri'] }; }
-function renderSchedule() { const mode = $('scheduleMode').value; $('customSchedule').hidden = mode !== 'custom'; if (mode in PRESETS) editing.timeSlots = structuredClone(PRESETS[mode]); if (mode === 'all-day') editing.timeSlots = []; if (mode !== 'custom') return; $('timeSlotList').innerHTML = editing.timeSlots.map((slot, index) => `<div class="slot"><input data-time="start" data-index="${index}" type="time" value="${slot.startTime}"><span>to</span><input data-time="end" data-index="${index}" type="time" value="${slot.endTime}"><button type="button" data-slot-remove="${index}">Remove</button><div class="days">${WaitAMinuteRules.DAYS.map((day) => `<label><input data-day="${day}" data-index="${index}" type="checkbox" ${slot.days.includes(day) ? 'checked' : ''}>${day}</label>`).join('')}</div></div>`).join(''); $('timeSlotList').onclick = (event) => { const index = Number(event.target.dataset.slotRemove); if (Number.isInteger(index)) { editing.timeSlots.splice(index,1); renderSchedule(); } }; $('timeSlotList').onchange = (event) => { const index = Number(event.target.dataset.index); if (event.target.dataset.time) editing.timeSlots[index][event.target.dataset.time === 'start' ? 'startTime' : 'endTime'] = event.target.value; if (event.target.dataset.day) { const days = editing.timeSlots[index].days; const day = event.target.dataset.day; event.target.checked ? days.push(day) : editing.timeSlots[index].days = days.filter((item) => item !== day); } }; }
-async function saveRule(event) { event.preventDefault(); editing.blockType = document.querySelector('input[name="blockType"]:checked').value; if ($('scheduleMode').value === 'custom') renderSchedule(); if (!WaitAMinuteRules.validateRules([editing])) return status('Each custom slot needs different times and at least one day.', true); const index = state.rules.findIndex((rule) => rule.domain === editing.domain); if (index < 0) state.rules.push(editing); else state.rules[index] = editing; await saveRules(); $('ruleDialog').close(); status('Rule saved.'); }
-async function removeRule(domain) { state.rules = state.rules.filter((rule) => rule.domain !== domain); await saveRules(); status('Rule removed.'); }
-async function saveRules() { await chrome.storage.sync.set({ rules: state.rules }); renderRules(); }
-async function saveSettings(change) { state.settings = { ...state.settings, ...change }; await chrome.storage.sync.set({ settings: state.settings }); await render(); }
-function selectTab(name) { document.querySelectorAll('.tab').forEach((tab) => { const active = tab.dataset.tab === name; tab.classList.toggle('active',active); tab.setAttribute('aria-selected',active); }); document.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('active',panel.id === `${name}-tab`)); }
-function confirm(title, text, action) { confirmation = action; $('confirmTitle').textContent = title; $('confirmText').textContent = text; $('confirmDialog').showModal(); }
-async function resetStatistics() { await chrome.runtime.sendMessage({ action: 'resetStatistics' }); await renderStats(); status('Statistics reset.'); }
-async function exportConfig() { const payload = { format: 'waitaminute-config', version: 1, settings: state.settings, rules: state.rules }; const url = URL.createObjectURL(new Blob([JSON.stringify(payload,null,2)], { type:'application/json' })); const link = Object.assign(document.createElement('a'), { href:url, download:'waitaminute-settings.json' }); link.click(); URL.revokeObjectURL(url); status('Settings exported.'); }
-async function importConfig(event) { const file = event.target.files[0]; event.target.value = ''; if (!file) return; try { const config = JSON.parse(await file.text()); const rules = config.format === 'waitaminute-config' && config.version === 1 && WaitAMinuteRules.validateRules(config.rules); if (!rules || !config.settings) throw new Error(); const settings = { ...DEFAULTS, ...config.settings }; confirm('Replace configuration?', `Import ${rules.length} domain rule${rules.length === 1 ? '' : 's'} and replace your current settings.`, async () => { state = { settings, rules }; await chrome.storage.sync.set({ settings, rules }); await render(); status('Configuration imported.'); }); } catch (_) { status('That is not a valid WaitAMinute settings file.', true); } }
-async function renderStats() { const stats = await chrome.runtime.sendMessage({ action:'getStatistics' }); const today = WaitAMinuteRules.localDateKey(); const current = stats.dailyStats?.[today] || { blockedAttempts:0,challengesCompleted:0 }; $('todayBlocked').textContent = current.blockedAttempts; $('todayCompleted').textContent = current.challengesCompleted; $('successRate').textContent = current.blockedAttempts ? `${Math.max(0,Math.round((current.blockedAttempts-current.challengesCompleted)/current.blockedAttempts*100))}%` : '0%'; const dates = Array.from({length:14},(_,i) => WaitAMinuteRules.localDateKey(new Date(Date.now()-(13-i)*86400000))); const max = Math.max(1,...dates.map((date) => stats.dailyStats?.[date]?.blockedAttempts || 0)); $('chartContainer').innerHTML = dates.map((date) => `<div title="${date}: ${stats.dailyStats?.[date]?.blockedAttempts || 0} blocks" style="height:${(stats.dailyStats?.[date]?.blockedAttempts || 0)/max*100}%"></div>`).join(''); const totals = {}; Object.values(stats.dailyStats || {}).forEach((day) => Object.entries(day.domains || {}).forEach(([domain, value]) => { totals[domain] = (totals[domain]||0)+value.attempts; })); $('domainStatsList').innerHTML = Object.entries(totals).sort((a,b)=>b[1]-a[1]).slice(0,5).map(([domain,count])=>`<p>${escapeHtml(domain)} <strong>${count}</strong></p>`).join('') || '<p class="empty">No statistics yet.</p>'; }
-function status(message, error=false) { $('statusMessage').textContent = message; $('statusMessage').classList.toggle('error',error); }
+
+function bind() {
+    $('acknowledge').onclick = async () => {
+        await chrome.storage.local.set({ onboardingAcknowledged: true });
+        showApp(true);
+    };
+    $('addButton').onclick = addRule;
+    $('domainInput').onkeydown = (event) => { if (event.key === 'Enter') addRule(); };
+    $('domainList').onclick = (event) => {
+        const { domain } = event.target.dataset;
+        if (event.target.matches('[data-edit]')) openRule(state.rules.find((rule) => rule.domain === domain));
+        if (event.target.matches('[data-remove]')) ask(`Remove ${domain}?`, 'This will stop blocking the domain.', () => removeRule(domain));
+    };
+    $('enableToggle').onchange = () => saveSettings({ enabled: $('enableToggle').checked });
+    $('challengeType').onchange = () => saveSettings({ challengeType: $('challengeType').value });
+    $('waitDuration').onchange = () => saveSettings({ waitDuration: $('waitDuration').value });
+    $('bypassDuration').onchange = () => saveSettings({ bypassDuration: $('bypassDuration').value });
+    document.querySelectorAll('.tab').forEach((tab) => { tab.onclick = () => selectTab(tab.dataset.tab); });
+    $('scheduleMode').onchange = applyScheduleMode;
+    $('addTimeSlot').onclick = () => { editing.timeSlots.push(defaultSlot()); renderSlots(); };
+    $('timeSlotList').onclick = removeSlot;
+    $('timeSlotList').onchange = editSlot;
+    $('closeRule').onclick = () => $('ruleDialog').close();
+    $('cancelRule').onclick = () => $('ruleDialog').close();
+    $('ruleForm').onsubmit = saveRule;
+    $('exportConfig').onclick = exportConfig;
+    $('importConfig').onchange = importConfig;
+    $('resetStatistics').onclick = () => ask('Reset statistics?', 'This permanently deletes local statistics only.', resetStatistics);
+    $('confirmAction').onclick = () => confirmation?.();
+}
+
+function showApp(acknowledged) {
+    $('onboarding').hidden = acknowledged;
+    $('app').hidden = !acknowledged;
+}
+
+function renderSettings() {
+    const { enabled, challengeType, waitDuration, bypassDuration } = state.settings;
+    $('enableToggle').checked = enabled;
+    $('challengeType').value = challengeType;
+    $('waitDuration').value = waitDuration;
+    $('bypassDuration').value = bypassDuration;
+    $('waitDurationSection').hidden = challengeType !== 'countdown';
+}
+
+function renderRules() {
+    $('domainList').innerHTML = state.rules.map((rule) => {
+        const domain = escapeHtml(rule.domain);
+        return `<article class="rule">
+            <div><strong>${domain}</strong><p>${rule.blockType === 'hard' ? 'Hard block' : 'Soft block'} · ${escapeHtml(scheduleText(rule))}</p></div>
+            <div><button data-edit data-domain="${domain}">Edit</button><button data-remove data-domain="${domain}" aria-label="Remove ${domain}">Remove</button></div>
+        </article>`;
+    }).join('') || '<p class="empty">No blocked domains yet.</p>';
+}
+
+function escapeHtml(value) {
+    const span = document.createElement('span');
+    span.textContent = value;
+    return span.innerHTML;
+}
+
+function scheduleText(rule) {
+    const preset = presetName(rule.timeSlots);
+    if (preset !== 'custom') return $('scheduleMode').querySelector(`option[value="${preset}"]`).textContent;
+    if (rule.timeSlots.length > 1) return `${rule.timeSlots.length} schedules`;
+    const [slot] = rule.timeSlots;
+    return `${formatTime(slot.startTime)}–${formatTime(slot.endTime)} · ${slot.days.length === 7 ? 'Daily' : slot.days.join(', ')}`;
+}
+
+// Accepts a bare domain or a pasted URL, including internationalised names.
+function domainFromInput(value) {
+    const text = value.trim();
+    try {
+        return normaliseHostname(new URL(text.includes('://') ? text : `https://${text}`).hostname);
+    } catch {
+        return normaliseHostname(text);
+    }
+}
+
+function addRule() {
+    const domain = domainFromInput($('domainInput').value);
+    if (!validateRules([{ domain, blockType: 'soft', timeSlots: [] }])) return status('Enter a valid domain, such as example.com.', true);
+    if (state.rules.some((rule) => rule.domain === domain)) return status('That domain is already blocked.', true);
+    openRule({ domain, blockType: 'soft', timeSlots: [] });
+}
+
+function openRule(rule) {
+    editing = structuredClone(rule);
+    $('ruleTitle').textContent = state.rules.some((item) => item.domain === rule.domain) ? 'Edit domain' : 'Block domain';
+    $('modalDomain').textContent = editing.domain;
+    document.querySelector(`input[name="blockType"][value="${editing.blockType}"]`).checked = true;
+    $('scheduleMode').value = presetName(editing.timeSlots);
+    $('ruleError').hidden = true;
+    renderSlots();
+    $('ruleDialog').showModal();
+}
+
+// Compares by value: chrome.storage returns object keys sorted, so JSON.stringify comparisons never match.
+function slotsKey(slots) {
+    return slots.map(({ startTime, endTime, days }) => `${startTime}-${endTime}:${days.join(',')}`).join(';');
+}
+
+function presetName(slots) {
+    const preset = Object.keys(PRESETS).find((name) => slotsKey(slots) === slotsKey(PRESETS[name]));
+    return preset || (slots.length ? 'custom' : 'all-day');
+}
+
+function defaultSlot() {
+    return structuredClone(PRESETS.weekday[0]);
+}
+
+function applyScheduleMode() {
+    const mode = $('scheduleMode').value;
+    if (mode === 'all-day') editing.timeSlots = [];
+    else if (mode in PRESETS) editing.timeSlots = structuredClone(PRESETS[mode]);
+    else if (!editing.timeSlots.length) editing.timeSlots = [defaultSlot()];
+    renderSlots();
+}
+
+function renderSlots() {
+    const custom = $('scheduleMode').value === 'custom';
+    $('customSchedule').hidden = !custom;
+    if (!custom) return;
+    $('timeSlotList').innerHTML = editing.timeSlots.map((slot, index) => `<div class="slot">
+        <input data-time="startTime" data-index="${index}" type="time" value="${slot.startTime}" aria-label="Start time">
+        <span>to</span>
+        <input data-time="endTime" data-index="${index}" type="time" value="${slot.endTime}" aria-label="End time">
+        <button type="button" data-slot-remove="${index}">Remove</button>
+        <div class="days">${DAYS.map((day) => `<label><input data-day="${day}" data-index="${index}" type="checkbox" ${slot.days.includes(day) ? 'checked' : ''}>${day}</label>`).join('')}</div>
+    </div>`).join('');
+}
+
+function removeSlot(event) {
+    const index = Number(event.target.dataset.slotRemove);
+    if (!Number.isInteger(index)) return;
+    editing.timeSlots.splice(index, 1);
+    renderSlots();
+}
+
+function editSlot(event) {
+    const { time, day, index } = event.target.dataset;
+    const slot = editing.timeSlots[Number(index)];
+    if (time) slot[time] = event.target.value;
+    // Rebuild from DAYS so the stored order stays canonical (and presets keep matching).
+    if (day) slot.days = DAYS.filter((item) => (item === day ? event.target.checked : slot.days.includes(item)));
+}
+
+async function saveRule(event) {
+    event.preventDefault();
+    editing.blockType = document.querySelector('input[name="blockType"]:checked').value;
+    let error = '';
+    if ($('scheduleMode').value === 'custom' && !editing.timeSlots.length) error = 'Add at least one time slot.';
+    else if (!validateRules([editing])) error = 'Each time slot needs different start and end times and at least one day.';
+    $('ruleError').textContent = error;
+    $('ruleError').hidden = !error;
+    if (error) return;
+    const index = state.rules.findIndex((rule) => rule.domain === editing.domain);
+    if (index < 0) {
+        state.rules.push(editing);
+        $('domainInput').value = '';
+    } else {
+        state.rules[index] = editing;
+    }
+    await saveRules();
+    $('ruleDialog').close();
+    status('Rule saved.');
+}
+
+async function removeRule(domain) {
+    state.rules = state.rules.filter((rule) => rule.domain !== domain);
+    await saveRules();
+    status('Rule removed.');
+}
+
+async function saveRules() {
+    await chrome.storage.sync.set({ rules: state.rules });
+    renderRules();
+}
+
+async function saveSettings(change) {
+    state.settings = normaliseSettings({ ...state.settings, ...change });
+    await chrome.storage.sync.set({ settings: state.settings });
+    renderSettings();
+}
+
+function selectTab(name) {
+    document.querySelectorAll('.tab').forEach((tab) => {
+        const active = tab.dataset.tab === name;
+        tab.classList.toggle('active', active);
+        tab.setAttribute('aria-selected', active);
+    });
+    document.querySelectorAll('.panel').forEach((panel) => panel.classList.toggle('active', panel.id === `${name}-tab`));
+}
+
+function ask(title, text, action) {
+    confirmation = action;
+    $('confirmTitle').textContent = title;
+    $('confirmText').textContent = text;
+    $('confirmDialog').showModal();
+}
+
+async function resetStatistics() {
+    await chrome.runtime.sendMessage({ action: 'resetStatistics' });
+    await renderStats();
+    status('Statistics reset.');
+}
+
+function exportConfig() {
+    const payload = { format: 'waitaminute-config', version: 1, settings: state.settings, rules: state.rules };
+    const href = `data:application/json,${encodeURIComponent(JSON.stringify(payload, null, 2))}`;
+    Object.assign(document.createElement('a'), { href, download: 'waitaminute-settings.json' }).click();
+    status('Settings exported.');
+}
+
+async function importConfig(event) {
+    const [file] = event.target.files;
+    event.target.value = '';
+    if (!file) return;
+    try {
+        const config = JSON.parse(await file.text());
+        const rules = config.format === 'waitaminute-config' && config.version === 1 && validateRules(config.rules);
+        if (!rules || typeof config.settings !== 'object' || !config.settings) throw new Error('Invalid configuration');
+        const settings = normaliseSettings(config.settings);
+        const summary = `Import ${rules.length} domain rule${rules.length === 1 ? '' : 's'} and replace your current settings.`;
+        ask('Replace configuration?', summary, async () => {
+            state = { settings, rules };
+            await chrome.storage.sync.set({ settings, rules });
+            renderSettings();
+            renderRules();
+            status('Configuration imported.');
+        });
+    } catch {
+        status('That is not a valid WaitAMinute settings file.', true);
+    }
+}
+
+// Reads storage directly so opening the popup doesn't have to wake the service worker.
+async function renderStats() {
+    const { statistics } = await chrome.storage.local.get('statistics');
+    const dates = recentDateKeys(14);
+    const days = dates.map((date) => statistics?.dailyStats?.[date] || { blockedAttempts: 0, challengesCompleted: 0, domains: {} });
+    const today = days.at(-1);
+    const paused = today.blockedAttempts ? Math.max(0, Math.round((1 - today.challengesCompleted / today.blockedAttempts) * 100)) : 0;
+    $('todayBlocked').textContent = today.blockedAttempts;
+    $('todayCompleted').textContent = today.challengesCompleted;
+    $('successRate').textContent = `${paused}%`;
+
+    const max = Math.max(1, ...days.map((day) => day.blockedAttempts));
+    const total = days.reduce((sum, day) => sum + day.blockedAttempts, 0);
+    $('chartContainer').setAttribute('aria-label', `${total} blocks in the past 14 days`);
+    $('chartContainer').innerHTML = days
+        .map((day, index) => `<div title="${dates[index]}: ${day.blockedAttempts} blocks" style="height:${(day.blockedAttempts / max) * 100}%"></div>`)
+        .join('');
+
+    const totals = {};
+    days.forEach((day) => Object.entries(day.domains || {}).forEach(([domain, value]) => {
+        totals[domain] = (totals[domain] || 0) + value.attempts;
+    }));
+    $('domainStatsList').innerHTML = Object.entries(totals)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([domain, count]) => `<p>${escapeHtml(domain)} <strong>${count}</strong></p>`)
+        .join('') || '<p class="empty">No statistics yet.</p>';
+}
+
+function status(message, error = false) {
+    clearTimeout(statusTimer);
+    $('statusMessage').textContent = message;
+    $('statusMessage').classList.toggle('error', error);
+    statusTimer = setTimeout(() => { $('statusMessage').textContent = ''; }, 4000);
+}

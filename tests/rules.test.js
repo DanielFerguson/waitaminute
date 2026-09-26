@@ -30,6 +30,25 @@ test('uses an empty schedule for all-day blocking', () => {
     assert.equal(rules.getBlockInfo('example.com', [{ domain: 'example.com', blockType: 'soft', timeSlots: [] }]).shouldBlock, true);
 });
 
+test('normalises settings with defaults, clamping and coercion', () => {
+    assert.deepEqual(rules.normaliseSettings(), { enabled: true, challengeType: 'countdown', waitDuration: 30, bypassDuration: 10 });
+    assert.deepEqual(
+        rules.normaliseSettings({ enabled: false, challengeType: 'math', waitDuration: '1000', bypassDuration: 0, extra: true }),
+        { enabled: false, challengeType: 'math', waitDuration: 300, bypassDuration: 10 }
+    );
+    assert.equal(rules.normaliseSettings({ waitDuration: 2 }).waitDuration, 5);
+    assert.equal(rules.normaliseSettings({ challengeType: 'other' }).challengeType, 'countdown');
+});
+
+test('lists recent local dates in order without skipping days', () => {
+    // 4 October 2026 is a daylight-saving change in several southern-hemisphere time zones.
+    const keys = rules.recentDateKeys(14, new Date(2026, 9, 5, 0, 30));
+    assert.equal(new Set(keys).size, 14);
+    assert.equal(keys[0], '2026-09-22');
+    assert.equal(keys.at(-1), '2026-10-05');
+    assert.deepEqual([...keys].sort(), keys);
+});
+
 test('validates importable rules as one complete configuration', () => {
     assert.equal(rules.validateRules([{ domain: 'example.com', blockType: 'hard', timeSlots: [] }]).length, 1);
     assert.equal(rules.validateRules([{ domain: 'example.com', blockType: 'soft', timeSlots: [{ startTime: '10:00', endTime: '10:00', days: ['Mon'] }] }]), null);

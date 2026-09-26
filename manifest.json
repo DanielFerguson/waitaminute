@@ -1,14 +1,10 @@
 {
   "manifest_version": 3,
   "name": "WaitAMinute",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Add intentional friction before accessing distracting websites",
   "permissions": [
-    "storage",
-    "alarms"
-  ],
-  "host_permissions": [
-    "<all_urls>"
+    "storage"
   ],
   "background": {
     "service_worker": "background/service-worker.js"
@@ -35,7 +31,7 @@
     "128": "assets/icon-128.png"
   },
   "web_accessible_resources": [{
-    "resources": ["content/overlay.css", "block/*"],
+    "resources": ["block/block.html"],
     "matches": ["<all_urls>"]
   }]
 }

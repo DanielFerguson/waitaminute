@@ -1,0 +1,48 @@
+/* Colour tokens and base styles shared by the popup and the block page. */
+:root {
+    color-scheme: light dark;
+    --bg: #f6f8f6;
+    --surface: #fff;
+    --text: #17201a;
+    --muted: #58655c;
+    --line: #dce5df;
+    --field-line: #b9c5bc;
+    --accent: #287140;
+    --on-accent: #fff;
+    --danger: #a62323;
+    --danger-line: #e3b8b8;
+    --focus: #1a73e8;
+    --shadow: #23432a22;
+    --scrim: #17201a88;
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bg: #121714;
+        --surface: #1b221e;
+        --text: #e6ede8;
+        --muted: #a2b0a6;
+        --line: #2f3a33;
+        --field-line: #46534a;
+        --accent: #5cb176;
+        --on-accent: #0f1a12;
+        --danger: #ff9b9b;
+        --danger-line: #6b3434;
+        --focus: #8ab4f8;
+        --shadow: #00000066;
+        --scrim: #000000aa;
+    }
+}
+
+[hidden] {
+    display: none !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    * {
+        transition: none !important;
+    }
+}

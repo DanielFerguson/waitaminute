@@ -1,13 +1,133 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>WaitAMinute</title><link rel="stylesheet" href="popup.css"></head>
-<body><main class="container">
-  <header><div><p class="eyebrow">WAITAMINUTE</p><h1>Make space to choose</h1></div><label class="toggle" aria-label="Enable WaitAMinute"><input id="enableToggle" type="checkbox"><span></span></label></header>
-  <div id="onboarding" class="card" hidden><h2>Before you begin</h2><p>WaitAMinute checks the domain of pages you visit to show your chosen pause. Rules and settings can sync through Chrome; statistics stay on this device. No browsing data is sent to us or advertisers.</p><button id="acknowledge" class="primary">I understand</button></div>
-  <div id="app" hidden><div class="tabs" role="tablist" aria-label="WaitAMinute sections"><button class="tab active" role="tab" aria-selected="true" data-tab="domains">Domains</button><button class="tab" role="tab" aria-selected="false" data-tab="statistics">Statistics</button><button class="tab" role="tab" aria-selected="false" data-tab="settings">Settings</button></div>
-    <section id="domains-tab" class="panel active" role="tabpanel"><div class="add"><input id="domainInput" type="text" placeholder="example.com" aria-label="Domain to block"><button id="addButton" class="primary">Add</button></div><p class="hint">A soft block asks for a pause. A hard block opens a dedicated block page.</p><div id="domainList" class="list"></div></section>
-    <section id="statistics-tab" class="panel" role="tabpanel"><div class="stats"><div><strong id="todayBlocked">0</strong><span>Blocks today</span></div><div><strong id="todayCompleted">0</strong><span>Bypasses today</span></div><div><strong id="successRate">0%</strong><span>Paused</span></div></div><div class="card"><h2>Past 14 days</h2><div id="chartContainer" class="chart"></div></div><div class="card"><h2>Most blocked</h2><div id="domainStatsList"></div></div></section>
-    <section id="settings-tab" class="panel" role="tabpanel"><div class="card"><h2>Challenge</h2><label>Type<select id="challengeType"><option value="countdown">Countdown</option><option value="math">Simple math</option></select></label><label id="waitDurationSection">Wait seconds<input id="waitDuration" type="number" min="5" max="300"></label><label>Bypass minutes<input id="bypassDuration" type="number" min="1" max="60"></label></div><div class="card"><h2>Configuration</h2><button id="exportConfig">Export settings</button><label class="file-label">Import settings<input id="importConfig" type="file" accept="application/json"></label></div><div class="card danger"><h2>Statistics</h2><p>Delete all local statistics. Rules and settings are unchanged.</p><button id="resetStatistics">Reset statistics</button></div></section>
-  </div>
-</main><dialog id="ruleDialog"><form method="dialog" class="dialog-card"><header><h2 id="ruleTitle">Edit domain</h2><button value="cancel" aria-label="Close">×</button></header><p id="modalDomain" class="domain"></p><fieldset><legend>Block type</legend><label><input type="radio" name="blockType" value="soft"> Soft — pause first</label><label><input type="radio" name="blockType" value="hard"> Hard — no bypass</label></fieldset><label>When<select id="scheduleMode"><option value="all-day">All day</option><option value="weekday">Weekdays, 9am–5pm</option><option value="evening">Weekday evenings, 5pm–9pm</option><option value="daily">Daily, 9am–5pm</option><option value="custom">Custom schedule</option></select></label><div id="customSchedule"><div id="timeSlotList"></div><button id="addTimeSlot" type="button">Add time slot</button></div><footer><button value="cancel">Cancel</button><button id="saveRule" value="default" class="primary">Save</button></footer></form></dialog>
-<dialog id="confirmDialog"><form method="dialog" class="dialog-card"><h2 id="confirmTitle">Are you sure?</h2><p id="confirmText"></p><footer><button value="cancel">Cancel</button><button id="confirmAction" value="default" class="danger-button">Continue</button></footer></form></dialog><p id="statusMessage" role="status" aria-live="polite"></p>
-<script src="../shared/rules.js"></script><script src="popup.js"></script></body></html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>WaitAMinute</title>
+    <link rel="stylesheet" href="../shared/theme.css">
+    <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+    <main class="container">
+        <header>
+            <div>
+                <p class="eyebrow">WAITAMINUTE</p>
+                <h1>Make space to choose</h1>
+            </div>
+            <label class="toggle" aria-label="Enable WaitAMinute"><input id="enableToggle" type="checkbox"><span></span></label>
+        </header>
+
+        <div id="onboarding" class="card" hidden>
+            <h2>Before you begin</h2>
+            <p>WaitAMinute checks the domain of pages you visit to show your chosen pause. Rules and settings can sync through Chrome; statistics stay on this device. No browsing data is sent to us or advertisers.</p>
+            <button id="acknowledge" class="primary">I understand</button>
+        </div>
+
+        <div id="app" hidden>
+            <div class="tabs" role="tablist" aria-label="WaitAMinute sections">
+                <button class="tab active" role="tab" aria-selected="true" data-tab="domains">Domains</button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="statistics">Statistics</button>
+                <button class="tab" role="tab" aria-selected="false" data-tab="settings">Settings</button>
+            </div>
+
+            <section id="domains-tab" class="panel active" role="tabpanel">
+                <div class="add">
+                    <input id="domainInput" type="text" placeholder="example.com" aria-label="Domain to block">
+                    <button id="addButton" class="primary">Add</button>
+                </div>
+                <p class="hint">A soft block asks for a pause. A hard block opens a dedicated block page.</p>
+                <div id="domainList" class="list"></div>
+            </section>
+
+            <section id="statistics-tab" class="panel" role="tabpanel">
+                <div class="stats">
+                    <div><strong id="todayBlocked">0</strong><span>Blocks today</span></div>
+                    <div><strong id="todayCompleted">0</strong><span>Bypasses today</span></div>
+                    <div><strong id="successRate">0%</strong><span>Paused</span></div>
+                </div>
+                <div class="card">
+                    <h2>Past 14 days</h2>
+                    <div id="chartContainer" class="chart" role="img"></div>
+                </div>
+                <div class="card">
+                    <h2>Most blocked</h2>
+                    <div id="domainStatsList"></div>
+                </div>
+            </section>
+
+            <section id="settings-tab" class="panel" role="tabpanel">
+                <div class="card">
+                    <h2>Challenge</h2>
+                    <label>Type
+                        <select id="challengeType">
+                            <option value="countdown">Countdown</option>
+                            <option value="math">Simple math</option>
+                        </select>
+                    </label>
+                    <label id="waitDurationSection">Wait seconds<input id="waitDuration" type="number" min="5" max="300"></label>
+                    <label>Bypass minutes<input id="bypassDuration" type="number" min="1" max="60"></label>
+                </div>
+                <div class="card">
+                    <h2>Configuration</h2>
+                    <button id="exportConfig">Export settings</button>
+                    <label class="file-label">Import settings<input id="importConfig" type="file" accept="application/json"></label>
+                </div>
+                <div class="card danger">
+                    <h2>Statistics</h2>
+                    <p>Delete all local statistics. Rules and settings are unchanged.</p>
+                    <button id="resetStatistics">Reset statistics</button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <dialog id="ruleDialog">
+        <form id="ruleForm" method="dialog" class="dialog-card">
+            <header>
+                <h2 id="ruleTitle">Edit domain</h2>
+                <button id="closeRule" type="button" aria-label="Close">×</button>
+            </header>
+            <p id="modalDomain" class="domain"></p>
+            <fieldset>
+                <legend>Block type</legend>
+                <label><input type="radio" name="blockType" value="soft"> Soft — pause first</label>
+                <label><input type="radio" name="blockType" value="hard"> Hard — no bypass</label>
+            </fieldset>
+            <label>When
+                <select id="scheduleMode">
+                    <option value="all-day">All day</option>
+                    <option value="weekday">Weekdays, 9am–5pm</option>
+                    <option value="evening">Weekday evenings, 5pm–9pm</option>
+                    <option value="daily">Daily, 9am–5pm</option>
+                    <option value="custom">Custom schedule</option>
+                </select>
+            </label>
+            <div id="customSchedule">
+                <div id="timeSlotList"></div>
+                <button id="addTimeSlot" type="button">Add time slot</button>
+            </div>
+            <p id="ruleError" class="form-error" role="alert" hidden></p>
+            <footer>
+                <button id="cancelRule" type="button">Cancel</button>
+                <button id="saveRule" class="primary">Save</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <dialog id="confirmDialog">
+        <form method="dialog" class="dialog-card">
+            <h2 id="confirmTitle">Are you sure?</h2>
+            <p id="confirmText"></p>
+            <footer>
+                <button value="cancel">Cancel</button>
+                <button id="confirmAction" value="default" class="danger-button">Continue</button>
+            </footer>
+        </form>
+    </dialog>
+
+    <p id="statusMessage" role="status" aria-live="polite"></p>
+
+    <script src="../shared/rules.js"></script>
+    <script src="popup.js"></script>
+</body>
+</html>

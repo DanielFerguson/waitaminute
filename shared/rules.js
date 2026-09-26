@@ -5,6 +5,22 @@
     root.WaitAMinuteRules = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
     const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const DEFAULT_SETTINGS = Object.freeze({ enabled: true, challengeType: 'countdown', waitDuration: 30, bypassDuration: 10 });
+
+    function clamp(value, min, max, fallback) {
+        const number = Math.round(Number(value));
+        return Number.isFinite(number) && number > 0 ? Math.min(max, Math.max(min, number)) : fallback;
+    }
+
+    function normaliseSettings(value) {
+        const settings = { ...DEFAULT_SETTINGS, ...(value || {}) };
+        return {
+            enabled: Boolean(settings.enabled ?? true),
+            challengeType: settings.challengeType === 'math' ? 'math' : 'countdown',
+            waitDuration: clamp(settings.waitDuration, 5, 300, DEFAULT_SETTINGS.waitDuration),
+            bypassDuration: clamp(settings.bypassDuration, 1, 60, DEFAULT_SETTINGS.bypassDuration)
+        };
+    }
 
     function normaliseHostname(value) {
         return String(value || '').trim().toLowerCase().replace(/^www\./, '').replace(/\.$/, '');
@@ -38,6 +54,18 @@
         return `${year}-${month}-${day}`;
     }
 
+    // Calendar arithmetic (not 24h steps) keeps this correct across daylight-saving changes.
+    function recentDateKeys(count, date = new Date()) {
+        return Array.from({ length: count }, (_, index) => {
+            const day = new Date(date.getFullYear(), date.getMonth(), date.getDate() - (count - 1 - index));
+            return localDateKey(day);
+        });
+    }
+
+    function formatTime(value) {
+        return new Date(`2000-01-01T${value}:00`).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    }
+
     function isSlotActive(slot, date = new Date()) {
         const start = minutesFromTime(slot.startTime);
         const end = minutesFromTime(slot.endTime);
@@ -60,7 +88,7 @@
         if (!Array.isArray(rule.timeSlots) || rule.timeSlots.length === 0) {
             return { shouldBlock: true, rule, reason: 'Blocked all day' };
         }
-        const slot = (rule.timeSlots || []).find((candidate) => isSlotActive(candidate, date));
+        const slot = rule.timeSlots.find((candidate) => isSlotActive(candidate, date));
         if (!slot) return { shouldBlock: false, rule };
         return { shouldBlock: true, rule, slot, reason: 'Blocked during a scheduled time' };
     }
@@ -86,5 +114,8 @@
         return rules;
     }
 
-    return { DAYS, normaliseHostname, domainMatches, matchingRule, minutesFromTime, localDateKey, isSlotActive, getBlockInfo, validateRules };
+    return {
+        DAYS, DEFAULT_SETTINGS, normaliseSettings, normaliseHostname, domainMatches, matchingRule, minutesFromTime,
+        localDateKey, recentDateKeys, formatTime, isSlotActive, getBlockInfo, validateRules
+    };
 });

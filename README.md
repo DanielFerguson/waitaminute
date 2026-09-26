@@ -38,17 +38,17 @@ WaitAMinute helps you build better browsing habits by adding a moment of pause b
 
 1. **Add a Website to Block List**:
    - Click the WaitAMinute icon in your toolbar
-   - Enter the domain you want to block (e.g., `twitter.com`, `reddit.com`)
-   - Click "Add Domain"
+   - Enter the domain you want to block (e.g., `twitter.com`, `reddit.com`), or paste a link to it
+   - Click "Add", then choose a soft or hard block and when it applies
 
 2. **Accessing Blocked Sites**:
    - When you navigate to a blocked site, you'll see an overlay
-   - Complete the countdown or math challenge
+   - Complete the countdown or math challenge, or choose "Go back" if you've changed your mind
    - Upon success, you'll have temporary access to the site
 
 3. **Managing Your Block List**:
    - Click the extension icon to view all blocked domains
-   - Remove domains by clicking the "×" next to each entry
+   - Edit or remove domains with the buttons next to each entry
    - Use the toggle to temporarily disable the extension
 
 ## 🛠️ Configuration
@@ -59,20 +59,20 @@ Rules and settings are stored through Chrome Sync when it is enabled in Chrome. 
 
 ```
 waitaminute/
-├── manifest.json           # Chrome extension manifest
-├── popup/                  # Extension popup interface
-│   ├── popup.html
-│   ├── popup.js
-│   └── popup.css
-├── content/               # Content scripts
-│   ├── content.js         # Main content script
-│   └── overlay.css        # Overlay styles
-├── background/            # Background service worker
-│   └── service-worker.js
-└── assets/               # Icons and images
-    ├── icon-16.png
-    ├── icon-48.png
-    └── icon-128.png
+├── manifest.json          # Chrome extension manifest
+├── shared/                # Code and styles used by several extension contexts
+│   ├── rules.js           # Rule matching, schedules and settings (also unit tested in Node)
+│   └── theme.css          # Colour tokens for the popup and block page
+├── background/
+│   └── service-worker.js  # Bypasses, hard-block records and statistics
+├── content/
+│   └── content.js         # Soft-block overlay (closed Shadow DOM) and hard-block redirect
+├── popup/                 # Popup and options page
+├── block/                 # Extension-owned hard-block page
+├── assets/                # Icon and promo sources and generated PNGs
+├── docs/                  # GitHub Pages site, privacy policy and release notes
+├── scripts/               # Asset generation and packaging
+└── tests/                 # Node unit tests and Playwright extension tests
 ```
 
 ## 🤝 Contributing
@@ -93,12 +93,8 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - [x] Statistics tracking (how many times you've reconsidered)
 - [x] Sync settings across devices
 - [ ] Firefox extension port
-- [ ] Custom timeout durations
+- [x] Custom timeout durations
 - [ ] Whitelist mode (block everything except specified sites)
-
-## 🐛 Known Issues
-
-- Hard blocks open an extension-owned page. Soft blocks use an isolated Shadow DOM to minimise page interference.
 
 ## 📄 License
 
